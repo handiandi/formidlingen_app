@@ -15,8 +15,7 @@ public class Person {
     private ArrayList<Person> ansatte = new ArrayList<>();
 
 
-    public enum Type
-    {
+    public enum Type{
         Bruger, Hjaelper
     }
 

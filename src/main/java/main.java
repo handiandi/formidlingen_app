@@ -14,8 +14,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoUnit;
 
 public class main {
     public static void main(String[] args) {
@@ -32,13 +34,13 @@ public class main {
         String[] lines = loginInfo.split("\\r?\\n");
 
         for(int i = 0; i<loginInfo.split("\\r?\\n").length; i++){
-            System.out.println(i);
-            System.out.println(lines[i]);
             test[i][0] = lines[i].split("##")[0];
             test[i][1] = lines[i].split("##")[1];
         }
 
-        System.exit(1);
+
+
+
 
         if(!bhf.go(test[0][0], test[0][1])){
             throw new RuntimeException("Kunne ikke logge ind");
@@ -64,68 +66,11 @@ public class main {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/MM-yyyy"); //HH:mm
         LocalDate date = LocalDate.parse("09/04-2017", formatter);
         bhf.getTimeRegistreringer(bhf.getPerson().getOrdningById(6523), date);
-        System.exit(1);
 
-
-
-
-        String ordningRegistreringsSide = handler.getPage("/tidsregistrering.aspx", "");
-        //System.out.println(ordning);
-        Document registreringsSide = Jsoup.parse(ordningRegistreringsSide);
-        Elements registreringer = registreringsSide.body()
-                .getElementsByTag("table");
-        Elements rows = registreringer.select("tbody").select("tr");
-        rows.remove(0);
-        //System.out.println("hej hej! |" + rows.get(0).text()+"|");
-        if (rows.get(0).text().trim().toLowerCase()
-                .equals("der er ingen registreringer for denne periode.")){
-            System.out.println("Der er ingen indtastede timer endnu");
-        }
-
-
-        int i = 0;
-        //for (Element row: rows) {
-        //    System.out.println(row.text() + i);
-        //    i++;
-        //}
-        //System.out.println(registreringer.size());
-
-
-        //Find hjælpere
-        System.out.println("Finder hjælpere");
-        Elements hjaelpere = registreringsSide.body()
-                                              .select("select#udfoert_af")
-                                              .select("option");
-
-        for (Element hjaelper : hjaelpere) {
-            System.out.println(hjaelper.attr("value") + " = " + hjaelper.text());
-        }
-
-        //Finder indtastede timer for en anden måned
-        int year = 2017;
-        int month = 4;
-        //String ordningNumber = ordninger.get(0).attr("href").split("=")[1];
-        String ordningNumber = "";
-        System.out.println("ordningNumber = " + ordningNumber);
-        // https://www.formidlingen.dk/tidsregistrering.aspx?Ordning=6523&year=2017&month=4&orderBy=Dato&ascending=false&performedBy=105103&onlyShowMine=false
-        String urlPage = "/tidsregistrering.aspx?" +
-                         "Ordning=" + ordningNumber +
-                         "&year="+year+"&month="+month+"&orderBy=Dato&ascending=false" +
-                         "&performedBy="+hjaelpere.get(2).attr("value") +
-                         "&onlyShowMine=false";
-        System.out.println(urlPage);
-        System.out.println("---------------------------");
-        String r = handler.getPage(urlPage, "");
-        Document d = Jsoup.parse(r);
-        rows = d.select("tr.row.approved"); //Kun når de er godkendte!!!!
-        for (Element row : rows) {
-            System.out.println(row.text());
-            Elements tds = row.getElementsByTag("td");
-            for (Element td : tds) {
-                System.out.println("\t"+td.text());
-            }
-
-        }
+        System.out.println("######");
+        YearMonth ym = YearMonth.of(2017, 4);
+        System.out.println(bhf.getPerson().getOrdningById(6523).getTimeRegistreringer(ym).size());
+     
 
     } //main
 } //class

@@ -12,6 +12,7 @@ import userInfo.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -103,14 +104,14 @@ public class Formidlingen {
     public void getTimeRegistreringer(Ordning o){ //Dato = nuværende måned og år
         String ordningRegistreringsSide = handler.getPage("/tidsregistrering.aspx" + o.getUrlId(), "");
         //System.out.println(ordning);
-        parseTimeRegistreringsSide(ordningRegistreringsSide);
+        parseTimeRegistreringsSide(ordningRegistreringsSide, o);
     }
 
     /**
      *
      * @param registreringsSideString
      */
-    public void parseTimeRegistreringsSide(String registreringsSideString){
+    public void parseTimeRegistreringsSide(String registreringsSideString, Ordning o){
         Document registreringsSide = Jsoup.parse(registreringsSideString);
         Elements registreringer = registreringsSide.body()
                 .getElementsByTag("table");
@@ -121,7 +122,7 @@ public class Formidlingen {
                 .equals("der er ingen registreringer for denne periode.")){
             System.out.println("Der er ingen indtastede timer endnu");
         } else {
-            parseTimeRegistreringsTabel(registreringsSideString);
+            parseTimeRegistreringsTabel(registreringsSideString, o);
         }
     }
     public void getHelpers(){
@@ -152,20 +153,29 @@ public class Formidlingen {
                 + "&year=" + dato.getYear() + "&month=" + dato.getMonthValue()
                 + "&orderBy=Dato&ascending=false&performedBy="
                 + this.p.getAnsatte().get(0).getId() + "&onlyShowMine=false";
-        parseTimeRegistreringsSide(this.handler.getPage(request, ""));
+        parseTimeRegistreringsSide(this.handler.getPage(request, ""), o);
     }
 
-    public void parseTimeRegistreringsTabel(String side){
+    public void parseTimeRegistreringsTabel(String side, Ordning o){
         Document d = Jsoup.parse(side);
-        Elements rows = d.select("tr.row.approved"); //Kun når de er godkendte!!!!
-        System.out.println("Der er " + rows.size() + " godkendte registreringer");
-        for (Element row : rows) {
-            System.out.println(row.text());
-            Elements tds = row.getElementsByTag("td");
-            for (Element td : tds) {
-                System.out.println("\t"+td.text());
-            }
-
+        Elements godkendteTimer = d.select("tr.row.approved"); //Kun når de er godkendte!!!!
+        //System.out.println("Der er " + godkendteTimer.size() + " godkendte registreringer");
+        for (Element time : godkendteTimer) {
+            //System.out.println(time.text());
+            Elements values = time.getElementsByTag("td");
+            //System.out.println("Antal værdier: " + values.size() + "\n---------");
+            String date = values.get(2).text();
+            String fromString = date + " " + values.get(3).text();
+            String toString = date + " " + values.get(4).text();
+            String type = values.get(6).text();
+            String author = values.get(7).text();
+            String status = values.get(8).text();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d-MM-yyyy HH:mm"); //HH:mm
+            LocalDateTime from = LocalDateTime.parse(fromString, formatter);
+            LocalDateTime to = LocalDateTime.parse(toString, formatter);
+            TimeRegistrering t = new TimeRegistrering(from, to, author,
+                    TimeRegistrering.Status.valueOf(status), TimeRegistrering.TimeType.valueOf(type));
+            o.addTimeRegistrering(t);
         }
     }
 
