@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.TreeMap;
 
 /**
  * Created by anders-dev on 5/7/17.
@@ -50,6 +51,29 @@ public class Ordning {
             return this.timeRegistreringer.get(yearMonth);
         }
         return null;
+    }
+
+    public ArrayList<TimeRegistrering> getNewCreated(YearMonth yearMonth){
+        ArrayList<TimeRegistrering> newCreated = new ArrayList<>();
+        if (!this.timeRegistreringer.containsKey(yearMonth))
+            return newCreated;
+
+        for (TimeRegistrering time : this.timeRegistreringer.get(yearMonth)){
+            if (time.getStatus() == TimeRegistrering.Status.Ny)
+                newCreated.add(time);
+        }
+        return newCreated;
+    }
+
+    public boolean checkID(YearMonth ym, int id){
+        if (!this.timeRegistreringer.containsKey(ym))
+            return true;
+
+        for (TimeRegistrering time : this.timeRegistreringer.get(ym)){
+            if (time.getId() == id)
+                return false;
+        }
+        return true;
     }
 
     @Override
