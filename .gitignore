@@ -3,6 +3,7 @@
 out/
 target/
 login.txt
+notes.txt
 
 src/main/resources/
 src/test/
