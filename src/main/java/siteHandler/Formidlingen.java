@@ -1,6 +1,9 @@
 package siteHandler;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -12,6 +15,7 @@ import userInfo.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,16 +25,24 @@ import java.util.Map;
 /**
  * Created by anders-dev on 5/6/17.
  */
-public class Formidlingen {
+public enum  Formidlingen {
+    INSTANCE;
     private PageHandler handler;
     private Response res;
     private Person p;
 
 
-    public Formidlingen(){
+    Formidlingen(){
         handler = new PageHandler("https://www.formidlingen.dk");
     }
 
+
+    /**
+     * This method logs in on formidlingen.dk with a given email and password
+     * @param email - Email for login
+     * @param password - Password for login
+     * @return The response as JSON
+     */
     public JSONObject login(String email, String password){
         Map<String, String> headers = new HashMap<String, String>();
         headers.put("X-Requested-With", "XMLHttpRequest");
@@ -48,8 +60,14 @@ public class Formidlingen {
 
     }
 
+    /**
+     * This method try to login, create the user and update the user.
+     * This method call multiple other methods.
+     * @param email - Email for login
+     * @param password - Password for login
+     * @return Boolean whether the login was successful or not
+     */
     public boolean go(String email, String password){
-        //"/tidsregistrering.aspx"
         JSONObject result = login(email, password);
         if (!result.has("d")){
             return false; //noget gik helt galt
@@ -59,31 +77,35 @@ public class Formidlingen {
             if (!res.d.Authenticated){
                 return false;
             }
-            createUser(email);
             String page = getMyPage();
-
-            updateUser(page);
-
+            createUser(extractName(page));
             return res.d.getAuthenticated(); //Kaldet var rigtigt. True/False om login er rigtigt
         } //if-else
     }
-    private void updateUser(String page) {
+
+    /**
+     * This method updates the user with name, by extracting it from the html-page after successful login
+     * @param page - HTML-page as a string
+     */
+    private String extractName(String page) {
         Document html = Jsoup.parse(page);
         Element a = html.select("li.last.user-ico").select("a").get(0);
-        String name = a.text().split("-")[1].trim();
-        this.p.setName(name);
+        return a.text().split("-")[1].trim();
     }
 
 
-    private void createUser(String email) {
-
+    /**
+     * This method creates the user
+     */
+    private void createUser(String name) {
         switch (res.d.getType().toLowerCase()){
             case "bruger":
-                p = new Person(Person.Type.Bruger, "");
-
+                p = new Person(Person.Type.Bruger, name);
+                extractOrdninger();
+                extractHelpers();
                 break;
             case "hjælper":
-                p = new Person(Person.Type.Hjaelper, "");
+                p = new Person(Person.Type.Hjaelper, name);
                 break;
         }
     }
@@ -92,9 +114,7 @@ public class Formidlingen {
         return handler.getPage(res.d.getUrl(), "");
     }
 
-    public void timeRegistrering(Ordning o){
 
-    }
 
     public Person getPerson(){
         return this.p;
@@ -111,7 +131,7 @@ public class Formidlingen {
      *
      * @param registreringsSideString
      */
-    public void parseTimeRegistreringsSide(String registreringsSideString, Ordning o){
+    private void parseTimeRegistreringsSide(String registreringsSideString, Ordning o){
         Document registreringsSide = Jsoup.parse(registreringsSideString);
         Elements registreringer = registreringsSide.body()
                 .getElementsByTag("table");
@@ -125,15 +145,11 @@ public class Formidlingen {
             parseTimeRegistreringsTabel(registreringsSideString, o);
         }
     }
-    public void getHelpers(){
-        String ordningRegistreringsSide = handler.getPage("/tidsregistrering.aspx"
-                                                          + this.p.getOrdninger().get(0).getUrlId(), "");
-        extractHelpers(ordningRegistreringsSide);
 
 
-    }
-
-    public void extractHelpers(String registreringsSideString){
+    private void extractHelpers(){
+        String registreringsSideString = handler.getPage("/tidsregistrering.aspx"
+                + this.p.getOrdninger().get(0).getUrlId(), "");
         Document registreringsSide = Jsoup.parse(registreringsSideString);
         Elements hjaelpere = registreringsSide.body()
                 .select("select#udfoert_af")
@@ -156,30 +172,46 @@ public class Formidlingen {
         parseTimeRegistreringsSide(this.handler.getPage(request, ""), o);
     }
 
-    public void parseTimeRegistreringsTabel(String side, Ordning o){
+    private void parseTimeRegistreringsTabel(String side, Ordning o){
         Document d = Jsoup.parse(side);
-        Elements godkendteTimer = d.select("tr.row.approved"); //Kun når de er godkendte!!!!
-        //System.out.println("Der er " + godkendteTimer.size() + " godkendte registreringer");
-        for (Element time : godkendteTimer) {
-            //System.out.println(time.text());
-            Elements values = time.getElementsByTag("td");
-            //System.out.println("Antal værdier: " + values.size() + "\n---------");
+        Elements allRow = d.select("tr.row");
+        Elements row_details = d.select("tr.details_row");
+
+        for (int i=0; i<allRow.size(); i++) {
+            Elements values = allRow.get(i).getElementsByTag("td");
             String date = values.get(2).text();
             String fromString = date + " " + values.get(3).text();
             String toString = date + " " + values.get(4).text();
             String type = values.get(6).text();
-            String author = values.get(7).text();
+            String ansat = values.get(7).text();
             String status = values.get(8).text();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d-MM-yyyy HH:mm"); //HH:mm
             LocalDateTime from = LocalDateTime.parse(fromString, formatter);
             LocalDateTime to = LocalDateTime.parse(toString, formatter);
-            TimeRegistrering t = new TimeRegistrering(from, to, author,
-                    TimeRegistrering.Status.valueOf(status), TimeRegistrering.TimeType.valueOf(type));
+            int id = Integer.parseInt(row_details.get(i)
+                    .select("div.details > input")
+                    .attr("value"));
+
+            Elements detailLines = row_details.get(i).select("div.detail_line");
+            String author = "";
+            for (Element line : detailLines) {
+                String text = line.select("div.text").text();
+                if (text.toLowerCase().contains("indtastet af bruger:")){
+                    author = text.split(":")[1].trim();
+                }
+            }
+            TimeRegistrering t = new TimeRegistrering.Builder(from, to, ansat)
+                    .id(id)
+                    .author(author)
+                    .status(TimeRegistrering.Status.valueOf(status))
+                    .type(TimeRegistrering.TimeType.valueOf(type))
+                    .build();
+
             o.addTimeRegistrering(t);
         }
     }
 
-    public void getOrdninger(){
+    public void extractOrdninger(){
         String reg = handler.getPage("/tidsregistrering.aspx", "");
         //System.out.println("Tidsregistrering");
         Document doc = Jsoup.parse(reg);
@@ -194,4 +226,65 @@ public class Formidlingen {
 
 
 
+    public void saveTimer(int ordningsId, YearMonth ym){
+        ArrayList<TimeRegistrering> timer = this.p.getOrdningById(ordningsId).getNewCreated(ym);
+        this.saveTimer(ordningsId, timer);
+    }
+
+    public void saveTimer(int ordningsId, ArrayList<TimeRegistrering> timer){
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("X-Requested-With", "XMLHttpRequest");
+        headers.put("Content-Type", "application/json; charset=UTF-8");
+        headers.put("Accept-Language", "da-DK,da;q=0.8,en-US;q=0.6,en;q=0.4");
+        headers.put("Origin", "https://www.formidlingen.dk");
+
+        DateTimeFormatter datesFormatter = DateTimeFormatter.ofPattern("\"dd/MM/yyyy\"");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("\"HH:mm\"");
+        Gson gson = new GsonBuilder().serializeNulls().create(); //.setPrettyPrinting()
+        JsonParser jp = new JsonParser();
+        String jsonPayload = "";
+        for (TimeRegistrering time : timer) {
+            jsonPayload += "{ordningsnr: " + ordningsId + ", "
+                    + "vagtType: \"" + time.getType().getValue() + "\", "
+                    + "dates: " + "["+time.getFrom().format(datesFormatter) + "], "
+                    + "from: " + time.getFrom().format(timeFormatter) + ", "
+                    + "to: " + time.getTo().format(timeFormatter) + ", "
+                    + "performedBy: null, "
+                    + "comment: \"\"}";
+
+            JsonElement je = jp.parse(jsonPayload);
+            System.out.println("Payload = \n" + gson.toJson(je));
+            System.out.println();
+            jsonPayload = "";
+            /*
+            URL mangler
+            Headers skal tjekkes!!
+            handler.postAsJson("", gson.toJson(je), headers);
+            */
+        }
+
+        /*
+        {
+            ordningsnr: 6523,
+            vagtType: "0",
+            dates: ["17/05/2017"],
+            from: "08:45",
+            to: "16:15",
+            performedBy: null,
+            comment: ""
+        }
+         */
+
+
+
+
+
+
+
+
+    }
+
+
+
 }
+
