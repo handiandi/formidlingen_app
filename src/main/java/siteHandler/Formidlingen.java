@@ -106,6 +106,7 @@ public enum  Formidlingen {
                 break;
             case "hjælper":
                 p = new Person(Person.Type.Hjaelper, name);
+                extractOrdninger();
                 break;
         }
     }
@@ -166,9 +167,12 @@ public enum  Formidlingen {
 
     public void getTimeRegistreringer(Ordning o, LocalDate dato){
         String request = "/tidsregistrering.aspx?Ordning=" + o.getId()
-                + "&year=" + dato.getYear() + "&month=" + dato.getMonthValue()
-                + "&orderBy=Dato&ascending=false&performedBy="
-                + this.p.getAnsatte().get(0).getId() + "&onlyShowMine=false";
+                        + "&year=" + dato.getYear() + "&month=" + dato.getMonthValue()
+                        + "&orderBy=Dato&ascending=false";
+        if (this.p.getType() == Person.Type.Bruger) {
+                    request += "&performedBy=" + this.p.getAnsatte().get(0).getId();
+        }
+        request += "&onlyShowMine=false";
         parseTimeRegistreringsSide(this.handler.getPage(request, ""), o);
     }
 
@@ -176,7 +180,8 @@ public enum  Formidlingen {
         Document d = Jsoup.parse(side);
         Elements allRow = d.select("tr.row");
         Elements row_details = d.select("tr.details_row");
-
+        //System.out.println("parseTimeRegistreringsTabel - Antal rows: " + allRow.size());
+        ArrayList<TimeRegistrering> timeRegistreringArrayList = new ArrayList<>();
         for (int i=0; i<allRow.size(); i++) {
             Elements values = allRow.get(i).getElementsByTag("td");
             String date = values.get(2).text();
@@ -196,7 +201,7 @@ public enum  Formidlingen {
             String author = "";
             for (Element line : detailLines) {
                 String text = line.select("div.text").text();
-                if (text.toLowerCase().contains("indtastet af bruger:")){
+                if (text.toLowerCase().contains("indtastet af")){
                     author = text.split(":")[1].trim();
                 }
             }
@@ -207,8 +212,9 @@ public enum  Formidlingen {
                     .type(TimeRegistrering.TimeType.valueOf(type))
                     .build();
 
-            o.addTimeRegistrering(t);
+           timeRegistreringArrayList.add(t);
         }
+        o.setTimeRegistreringer(timeRegistreringArrayList.get(0).getYearMonth(), timeRegistreringArrayList);
     }
 
     public void extractOrdninger(){
@@ -232,10 +238,12 @@ public enum  Formidlingen {
     }
 
     public void saveTimer(int ordningsId, ArrayList<TimeRegistrering> timer){
+        String requestUrl = "https://www.formidlingen.dk/usercontrols/registerwork/TimeregistreringService.asmx/Create";
         Map<String, String> headers = new HashMap<String, String>();
         headers.put("X-Requested-With", "XMLHttpRequest");
         headers.put("Content-Type", "application/json; charset=UTF-8");
         headers.put("Accept-Language", "da-DK,da;q=0.8,en-US;q=0.6,en;q=0.4");
+        headers.put("Accept-Encoding", "gzip, deflate, br");
         headers.put("Origin", "https://www.formidlingen.dk");
 
         DateTimeFormatter datesFormatter = DateTimeFormatter.ofPattern("\"dd/MM/yyyy\"");
@@ -256,32 +264,38 @@ public enum  Formidlingen {
             System.out.println("Payload = \n" + gson.toJson(je));
             System.out.println();
             jsonPayload = "";
-            /*
-            URL mangler
-            Headers skal tjekkes!!
-            handler.postAsJson("", gson.toJson(je), headers);
-            */
+
+            handler.postAsJson(requestUrl, gson.toJson(je), headers);
+
         }
+        Ordning o = this.p.getOrdningById(ordningsId);
+        this.getTimeRegistreringer(o, timer.get(0).getFrom().toLocalDate());
+    }
 
-        /*
-        {
-            ordningsnr: 6523,
-            vagtType: "0",
-            dates: ["17/05/2017"],
-            from: "08:45",
-            to: "16:15",
-            performedBy: null,
-            comment: ""
+    public void deleteTimer(int ordningsId, ArrayList<TimeRegistrering> timer){
+        String requestUrl = "https://www.formidlingen.dk/usercontrols/registerwork/TimeregistreringService.asmx/Delete";
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("X-Requested-With", "XMLHttpRequest");
+        headers.put("Content-Type", "application/json; charset=UTF-8");
+        headers.put("Accept-Language", "da-DK,da;q=0.8,en-US;q=0.6,en;q=0.4");
+        headers.put("Accept-Encoding", "gzip, deflate, br");
+        headers.put("Origin", "https://www.formidlingen.dk");
+
+        Gson gson = new GsonBuilder().serializeNulls().create(); //.setPrettyPrinting()
+        JsonParser jp = new JsonParser();
+        String jsonPayload = "";
+        for (TimeRegistrering time : timer) {
+            jsonPayload += "{timeregistreringsId: \"" + time.getId()+"\"}";
+
+            JsonElement je = jp.parse(jsonPayload);
+            System.out.println("Delete Payload = \n" + gson.toJson(je));
+            System.out.println();
+            jsonPayload = "";
+
+            handler.postAsJson(requestUrl, gson.toJson(je), headers);
         }
-         */
-
-
-
-
-
-
-
-
+        Ordning o = this.p.getOrdningById(ordningsId);
+        this.getTimeRegistreringer(o, timer.get(0).getFrom().toLocalDate());
     }
 
 
