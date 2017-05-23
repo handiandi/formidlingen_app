@@ -18,6 +18,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class main {
@@ -44,7 +45,7 @@ public class main {
 
 
 
-        if(!bhf.go(test[0][0], test[0][1])){
+        if(!bhf.go(test[1][0], test[1][1])){
             throw new RuntimeException("Kunne ikke logge ind");
 
         }
@@ -74,9 +75,10 @@ public class main {
         System.out.println(bhf.getPerson().getOrdningById(6523).getTimeRegistreringer(ym).size());
 
         for (TimeRegistrering r : bhf.getPerson().getOrdningById(6523).getTimeRegistreringer(ym)) {
-            System.out.println(r.getAntalTimer());
+            System.out.println(r.getAuthor() + ": " + r.getAntalTimer());
 
         }
+
 
         System.out.println("\n\n---------- Rule Tester ------------");
         YearMonth ym0 = YearMonth.of(2017, 5);
@@ -90,29 +92,48 @@ public class main {
 
 
         System.out.println("\n\n---------- Create new TimeRegistrering  ------------");
-        
+
         YearMonth ym2 = YearMonth.of(2017, 5);
         DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("d-MM-yyyy HH:mm"); //HH:mm
-        LocalDateTime from1 = LocalDateTime.parse("12-05-2017 10:00", formatter2);
-        LocalDateTime to1 = LocalDateTime.parse("12-05-2017 15:00", formatter2);
+        LocalDateTime from1 = LocalDateTime.parse("10-05-2017 10:00", formatter2);
+        LocalDateTime to1 = LocalDateTime.parse("10-05-2017 16:00", formatter2);
         TimeRegistrering time = new TimeRegistrering.Builder(from1, to1, bhf.getPerson().getName())
                 .status(TimeRegistrering.Status.Ny).type(TimeRegistrering.TimeType.Almindelig).build();
+        /*
         LocalDateTime from2 = LocalDateTime.parse("3-05-2017 10:00", formatter2);
         LocalDateTime to2 = LocalDateTime.parse("3-05-2017 15:00", formatter2);
         TimeRegistrering time2 = new TimeRegistrering.Builder(from2, to2, bhf.getPerson().getName())
                 .status(TimeRegistrering.Status.Ny).type(TimeRegistrering.TimeType.Almindelig).build();
+        */
         bhf.getPerson().getOrdningById(6523).addTimeRegistrering(time);
-        bhf.getPerson().getOrdningById(6523).addTimeRegistrering(time2);
-        System.out.println("Antal nye timer: " + bhf.getPerson().getOrdningById(6523).getNewCreated(ym2).size());
-        System.out.println("Ny time id: " + bhf.getPerson().getOrdningById(6523).getNewCreated(ym2).get(0).getId());
-        System.out.println("Ny time id: " + bhf.getPerson().getOrdningById(6523).getNewCreated(ym2).get(1).getId());
-        System.out.println(-10* (int)Math.pow(10.0,6.0));
 
+        //bhf.getPerson().getOrdningById(6523).addTimeRegistrering(time2);
 
+        //System.out.println("Antal nye timer: " + bhf.getPerson().getOrdningById(6523).getNewCreated(ym2).size());
+        //System.out.println("Ny time id: " + bhf.getPerson().getOrdningById(6523).getNewCreated(ym2).get(0).getId());
+
+        //System.out.println("Ny time id: " + bhf.getPerson().getOrdningById(6523).getNewCreated(ym2).get(1).getId());
+        //System.out.println(-10* (int)Math.pow(10.0,6.0));
+        ArrayList<TimeRegistrering> regs = bhf.getPerson().getOrdningById(6523).getTimeRegistreringer(ym2);
+        System.out.println("Antal timeregistreringer: " + regs.size());
+        for (TimeRegistrering t : regs) {
+            if(t.getFrom().equals(time.getFrom()) && t.getTo().equals(time.getTo())
+                && t.getAnsat().equals(time.getAnsat()) && t.getId()>0){
+                System.out.println("Time fundet!");
+                System.out.println(t.toString());
+                System.out.println("Sletter time");
+                ArrayList<TimeRegistrering> temp = new ArrayList<>();
+                temp.add(t);
+                //bhf.deleteTimer(6523, temp);
+                System.out.println("Time slettet...??");
+            }
+        }
+        //System.exit(1);
         System.out.println("\n\n---------- Save the new TimeRegistreringer to website ------------");
         bhf.saveTimer(6523, ym2);
 
-
+        System.out.println("\n\n---------- TimeRegistreringer toString ------------");
+        System.out.println(bhf.getPerson().getOrdningById(6523).toStringTimeregistreringer(ym2));
 
 
 
