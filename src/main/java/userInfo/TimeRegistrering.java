@@ -132,6 +132,10 @@ public class TimeRegistrering {
         return this.status;
     }
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
     public String getAnsat() {
         return this.ansat;
     }
@@ -146,5 +150,11 @@ public class TimeRegistrering {
 
     public int getId() {
         return id;
+    }
+
+    @Override
+    public String toString(){
+        return  this.id + "\t " + this.status + " \t " + this.ansat + " \t" + this.author + "\t " +this.type +"\t "
+                + this.from.toString() + "\t" + this.to.toString() + " \t" +this.antalTimer + "";
     }
 }
