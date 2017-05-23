@@ -46,6 +46,11 @@ public class Ordning {
         }
     }
 
+    public void setTimeRegistreringer(YearMonth ym, ArrayList<TimeRegistrering> timer){
+        this.timeRegistreringer.put(ym, timer);
+    }
+
+
     public ArrayList<TimeRegistrering> getTimeRegistreringer(YearMonth yearMonth) {
         if (this.timeRegistreringer.containsKey(yearMonth)) {
             return this.timeRegistreringer.get(yearMonth);
@@ -65,19 +70,22 @@ public class Ordning {
         return newCreated;
     }
 
-    public boolean checkID(YearMonth ym, int id){
-        if (!this.timeRegistreringer.containsKey(ym))
-            return true;
 
-        for (TimeRegistrering time : this.timeRegistreringer.get(ym)){
-            if (time.getId() == id)
-                return false;
-        }
-        return true;
-    }
 
     @Override
     public String toString() {
         return this.name + " | " + this.urlId;
+    }
+
+    public String toStringTimeregistreringer(YearMonth ym){
+        String s = "\tID\t\tStatus\t\t\t\tHjælper\t\t\t\t\tIndskriver\t\t\t\tType\t\t\tFra\t\t\t\t\tTil\t\t\tTimer\n"
+                + "--------------------------------------------------------------------------------------------------" +
+                "---------------------------------------------\n";
+        for (TimeRegistrering t : this.timeRegistreringer.get(ym)) {
+            s += t.toString() + "\n";
+        }
+        return s;
+        //this.id + "\t " + this.status + " \t " + this.ansat + " \t" + this.author + "\t " +this.type +"\t "
+        //+ this.from.toString() + "\t" + this.to.toString() + " \t" +this.antalTimer + "";
     }
 }
